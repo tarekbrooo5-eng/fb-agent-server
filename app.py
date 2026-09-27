@@ -1,0 +1,50 @@
+import os
+import google.generativeai as genai
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+# إعداد مفتاح الذكاء الاصطناعي (يمكنك وضعه لاحقاً كمتغير بيئي آمن في المنصة)
+# genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+
+@app.route('/', methods=['GET'])
+def home():
+    return jsonify({"status": "running", "message": "AI Facebook Agent Server is online!"})
+
+@app.route('/process_comment', methods=['POST'])
+def process_comment():
+    data = request.get_json() or {}
+    comment = data.get('comment', '')
+    page_context = data.get('context', 'متجر أو صفحة رسمية') # معلومات عن الصفحة أو الخدمة
+
+    if not comment:
+        return jsonify({"status": "error", "message": "No comment provided"}), 400
+
+    try:
+        # صياغة الرد الذكي الديناميكي عبر الذكاء الاصطناعي
+        prompt = f"""
+        أنت وكيل خدمة عملاء ذكي ومحترف لصفحة على فيسبوك.
+        معلومات الصفحة/النشاط: {page_context}
+        تعليق المستخدم الذي تحتاج للرد عليه هو: "{comment}"
+        
+        قم بصياغة رد ذكي، ودود، وطبيعي تماماً (باللهجة المناسبة أو العربية الفصحى المبسطة)، بحيث يتفاعل مع محتوى تعليقه بدقة ويوجهه بلطف لمتابعة التفاصيل عبر الرسائل الخاصة (الخاص). لا تضع ردوداً معلبة، بل اجعل الرد مخصصاً تماماً لهذا التعليق.
+        """
+        
+        # استخدام نموذج جيميناي لتوليد الرد
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(prompt)
+        generated_reply = response.text.strip()
+
+    except Exception as e:
+        # احتياطي في حال لم يتم إعداد المفتاح مؤقتاً
+        generated_reply = "أهلاً بك! شكراً لتواصلك معنا، يسعدنا الإجابة على استفسارك عبر الرسائل الخاصة 🌺"
+
+    return jsonify({
+        "status": "success",
+        "comment": comment,
+        "generated_reply": generated_reply
+    })
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
