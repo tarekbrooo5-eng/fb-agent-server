@@ -1,8 +1,10 @@
 import os
 import google.generativeai as genai
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 # إعداد مفتاح الذكاء الاصطناعي (يمكنك وضعه لاحقاً كمتغير بيئي آمن في المنصة)
 # genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
