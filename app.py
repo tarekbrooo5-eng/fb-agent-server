@@ -7,7 +7,7 @@ app = Flask(__name__)
 CORS(app)
 
 # إعداد مفتاح الذكاء الاصطناعي (يمكنك وضعه لاحقاً كمتغير بيئي آمن في المنصة)
-# genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 @app.route('/', methods=['GET'])
 def home():
