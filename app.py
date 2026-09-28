@@ -6,7 +6,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# إعداد مفتاح الذكاء الاصطناعي (يمكنك وضعه لاحقاً كمتغير بيئي آمن في المنصة)
+# إعداد مفتاح الذكاء الاصطناعي
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 @app.route('/', methods=['GET'])
@@ -17,7 +17,7 @@ def home():
 def process_comment():
     data = request.get_json() or {}
     comment = data.get('comment', '')
-    page_context = data.get('context', 'متجر أو صفحة رسمية') # معلومات عن الصفحة أو الخدمة
+    page_context = data.get('context', 'متجر أو صفحة رسمية')
 
     if not comment:
         return jsonify({"status": "error", "message": "No comment provided"}), 400
@@ -37,15 +37,15 @@ def process_comment():
         response = model.generate_content(prompt)
         generated_reply = response.text.strip()
 
-except Exception as e:
-        print("ERROR:", str(e)) # لطباعة الخطأ الحقيقي في سجلات Render
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({
+            "status": "success",
+            "comment": comment,
+            "generated_reply": generated_reply
+        })
 
-    return jsonify({
-        "status": "success",
-        "comment": comment,
-        "generated_reply": generated_reply
-    })
+    except Exception as e:
+        print("ERROR:", str(e))
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
