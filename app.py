@@ -37,9 +37,9 @@ def process_comment():
         response = model.generate_content(prompt)
         generated_reply = response.text.strip()
 
-    except Exception as e:
-        # احتياطي في حال لم يتم إعداد المفتاح مؤقتاً
-        generated_reply = "أهلاً بك! شكراً لتواصلك معنا، يسعدنا الإجابة على استفسارك عبر الرسائل الخاصة 🌺"
+except Exception as e:
+        print("ERROR:", str(e)) # لطباعة الخطأ الحقيقي في سجلات Render
+        return jsonify({"status": "error", "message": str(e)}), 500
 
     return jsonify({
         "status": "success",
