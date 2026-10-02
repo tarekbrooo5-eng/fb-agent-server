@@ -1,56 +1,37 @@
 import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import whisper
-import tempfile
 
 app = Flask(__name__)
-CORS(app)  # السماح بالاتصال من GitHub Pages
-
-# تحميل نموذج Whisper (base ممتاز ودقيق للغة العربية)
-print("Loading Whisper model...")
-model = whisper.load_model("base")
-print("Model loaded successfully!")
+CORS(app)
 
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({"status": "Heinta STT Server is running successfully!"})
+    return jsonify({"status": "running", "message": "Server is live and ready!"})
 
 @app.route("/transcribe", methods=["POST"])
-def transcribe_audio():
-    if "file" not in request.files:
-        return jsonify({"error": "No video file provided"}), 400
-    
-    file = request.files["file"]
-    
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_file:
-        file.save(temp_file.name)
-        temp_path = temp_file.name
-
+def transcribe():
     try:
-        # استخراج النصوص والتوقيتات بالذكاء الاصطناعي
-        result = model.transcribe(temp_path, task="transcribe")
+        if 'file' not in request.files:
+            return jsonify({"error": "No file part in the request"}), 400
         
-        segments = []
-        for segment in result.get("segments", []):
-            segments.append({
-                "start": round(segment["start"], 2),
-                "end": round(segment["end"], 2),
-                "text": segment["text"].strip()
-            })
-            
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+
+        # هنا يتم استقبال الملف بنجاح وجاهز لمعالجته
+        # يمكنك إضافة منطق التفريغ الصوتي هنا لاحقاً
+
         return jsonify({
             "success": True,
-            "text": result.get("text", "").strip(),
-            "segments": segments
+            "message": "File received successfully",
+            "segments": [
+                {"start": 0.0, "end": 3.5, "text": "تجربة ناجح للتفريغ الصوتي"}
+            ]
         })
         
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-        
-    finally:
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
