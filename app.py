@@ -1,52 +1,57 @@
 import os
-import google.generativeai as genai
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import whisper
+import tempfile
 
 app = Flask(__name__)
-CORS(app)
+CORS(app)  # السماح بالاتصال من GitHub Pages
 
-# إعداد مفتاح الذكاء الاصطناعي
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+# تحميل نموذج Whisper (base ممتاز ودقيق للغة العربية)
+print("Loading Whisper model...")
+model = whisper.load_model("base")
+print("Model loaded successfully!")
 
-@app.route('/', methods=['GET'])
+@app.route("/", methods=["GET"])
 def home():
-    return jsonify({"status": "running", "message": "AI Facebook Agent Server is online!"})
+    return jsonify({"status": "Heinta STT Server is running successfully!"})
 
-@app.route('/process_comment', methods=['POST'])
-def process_comment():
-    data = request.get_json() or {}
-    comment = data.get('comment', '')
-    page_context = data.get('context', 'متجر أو صفحة رسمية')
-
-    if not comment:
-        return jsonify({"status": "error", "message": "No comment provided"}), 400
+@app.route("/transcribe", methods=["POST"])
+def transcribe_audio():
+    if "file" not in request.files:
+        return jsonify({"error": "No video file provided"}), 400
+    
+    file = request.files["file"]
+    
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_file:
+        file.save(temp_file.name)
+        temp_path = temp_file.name
 
     try:
-        # صياغة الرد الذكي الديناميكي عبر الذكاء الاصطناعي
-        prompt = f"""
-        أنت وكيل خدمة عملاء ذكي ومحترف لصفحة على فيسبوك.
-        معلومات الصفحة/النشاط: {page_context}
-        تعليق المستخدم الذي تحتاج للرد عليه هو: "{comment}"
+        # استخراج النصوص والتوقيتات بالذكاء الاصطناعي
+        result = model.transcribe(temp_path, task="transcribe")
         
-        قم بصياغة رد ذكي، ودود، وطبيعي تماماً (باللهجة المناسبة أو العربية الفصحى المبسطة)، بحيث يتفاعل مع محتوى تعليقه بدقة ويوجهه بلطف لمتابعة التفاصيل عبر الرسائل الخاصة (الخاص). لا تضع ردوداً معلبة، بل اجعل الرد مخصصاً تماماً لهذا التعليق.
-        """
-        
-        # استخدام نموذج جيميناي لتوليد الرد
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content(prompt)
-        generated_reply = response.text.strip()
-
+        segments = []
+        for segment in result.get("segments", []):
+            segments.append({
+                "start": round(segment["start"], 2),
+                "end": round(segment["end"], 2),
+                "text": segment["text"].strip()
+            })
+            
         return jsonify({
-            "status": "success",
-            "comment": comment,
-            "generated_reply": generated_reply
+            "success": True,
+            "text": result.get("text", "").strip(),
+            "segments": segments
         })
-
+        
     except Exception as e:
-        print("ERROR:", str(e))
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"success": False, "error": str(e)}), 500
+        
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
