@@ -1,38 +1,60 @@
 import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import whisper
 
 app = Flask(__name__)
 CORS(app)
 
+# تحميل نموذج whisper (يُفضل استخدام 'tiny' أو 'base' للسرعة على الباقة المجانية)
+print("جاري تحميل نموذج الذكاء الاصطناعي...")
+model = whisper.load_model("base")
+print("تم تحميل النموذج بنجاح!")
+
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({"status": "running", "message": "Server is live and ready!"})
+    return jsonify({"status": "running", "message": "Video Transcription Server is Live!"})
 
 @app.route("/transcribe", methods=["POST"])
-def transcribe():
-    try:
-        if 'file' not in request.files:
-            return jsonify({"error": "No file part in the request"}), 400
-        
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({"error": "No file selected"}), 400
+def transcribe_audio():
+    if "file" not in request.files:
+        return jsonify({"success": False, "error": "لم يتم العثور على ملف في الطلب"}), 400
+    
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"success": False, "error": "لم يتم اختيار ملف"}), 400
 
-        # هنا يتم استقبال الملف بنجاح وجاهز لمعالجته
-        # يمكنك إضافة منطق التفريغ الصوتي هنا لاحقاً
+    try:
+        # حفظ الملف مؤقتًا على السيرفر
+        upload_dir = "/tmp"
+        os.makedirs(upload_dir, exist_ok=True)
+        file_path = os.path.join(upload_dir, file.filename)
+        file.save(file_path)
+
+        # تفريغ الصوت واستخراج التوقيتات باستخدام Whisper
+        result = model.transcribe(file_path, language="ar") # يمكنك تغيير اللغة أو تركها تلقائية
+        
+        segments = []
+        for segment in result.get("segments", []):
+            segments.append({
+                "start": round(segment["start"], 2),
+                "end": round(segment["end"], 2),
+                "text": segment["text"].strip()
+            })
+
+        # حذف الملف المؤقت لتنظيف مساحة السيرفر
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
         return jsonify({
             "success": True,
-            "message": "File received successfully",
-            "segments": [
-                {"start": 0.0, "end": 3.5, "text": "تجربة ناجح للتفريغ الصوتي"}
-            ]
+            "text": result.get("text", ""),
+            "segments": segments
         })
-        
+
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Error: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=10000)
