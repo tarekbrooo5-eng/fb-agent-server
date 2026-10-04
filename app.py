@@ -6,7 +6,6 @@ import whisper
 app = Flask(__name__)
 CORS(app)
 
-# تحميل نموذج whisper (يُفضل استخدام 'tiny' أو 'base' للسرعة على الباقة المجانية)
 print("جاري تحميل نموذج الذكاء الاصطناعي...")
 model = whisper.load_model("base")
 print("تم تحميل النموذج بنجاح!")
@@ -25,14 +24,12 @@ def transcribe_audio():
         return jsonify({"success": False, "error": "لم يتم اختيار ملف"}), 400
 
     try:
-        # حفظ الملف مؤقتًا على السيرفر
         upload_dir = "/tmp"
         os.makedirs(upload_dir, exist_ok=True)
         file_path = os.path.join(upload_dir, file.filename)
         file.save(file_path)
 
-        # تفريغ الصوت واستخراج التوقيتات باستخدام Whisper
-        result = model.transcribe(file_path, language="ar") # يمكنك تغيير اللغة أو تركها تلقائية
+        result = model.transcribe(file_path, language="ar")
         
         segments = []
         for segment in result.get("segments", []):
@@ -42,7 +39,6 @@ def transcribe_audio():
                 "text": segment["text"].strip()
             })
 
-        # حذف الملف المؤقت لتنظيف مساحة السيرفر
         if os.path.exists(file_path):
             os.remove(file_path)
 
